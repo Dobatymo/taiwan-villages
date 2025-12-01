@@ -139,8 +139,8 @@ def get_exif(path: Path) -> tuple[float, float] | None:
 
         try:
             exif = piexif.load(img.info["exif"])
-        except ValueError as e:
-            logging.warning("Failed to parse exif for %s: %s", path, e)
+        except (ValueError, TypeError) as e:
+            logging.warning("Failed to parse exif for %s: %s %s", path, type(e).__name__, e)
             return None
         except struct.error as e:
             logging.warning("Failed to parse exif for %s: %s", path, e)
@@ -192,8 +192,8 @@ def main() -> None:
             parser.error("CSV file already exists")
 
         files_with_gps = 0
-        files_not_in_taiwan = 0
         files_without_gps = 0
+        files_not_in_taiwan = 0
         villages: DefaultDict[str, int] = defaultdict(int)
         invalid_files = 0
 
@@ -230,8 +230,13 @@ def main() -> None:
                 except Exception:
                     logging.exception("Unhandled exception when loading %s", path)
 
-        print(files_with_gps, files_not_in_taiwan, files_without_gps)
+        print("Number of files with GPS info", files_with_gps)
+        print("Number of files without GPS info", files_without_gps)
+        print("Number of files not within Taiwan", files_not_in_taiwan)
+        print("Number of invalid files", invalid_files)
+
         villages = sorted(villages.items(), key=itemgetter(1))
+        print("Number of villages", len(villages))
 
         with args.out_csv.open("x", newline="", encoding="utf-8") as fw:
             writer = csv.writer(fw)
