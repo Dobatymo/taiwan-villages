@@ -1,7 +1,7 @@
 import csv
 import logging
 import struct
-from argparse import ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
 from fractions import Fraction
@@ -157,7 +157,7 @@ def get_exif(path: Path) -> tuple[float, float] | None:
 
 
 def main() -> None:
-    parser = ArgumentParser()
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         "--lat-lon",
@@ -189,12 +189,12 @@ def main() -> None:
 
     if args.path:
         if args.out_csv.exists():
-            parser.error("CSV file already exists")
+            parser.error(f"CSV file {args.out_csv.resolve()} already exists")
 
         files_with_gps = 0
         files_without_gps = 0
         files_not_in_taiwan = 0
-        villages: DefaultDict[str, int] = defaultdict(int)
+        villages_d: DefaultDict[str, int] = defaultdict(int)
         invalid_files = 0
 
         columns = (
@@ -224,7 +224,7 @@ def main() -> None:
                     try:
                         info = geoloc.lookup(lat, lon)
                         s = f"{info['level1_chinese']}, {info['level2_chinese']}, {info['level3_chinese']}"
-                        villages[s] += 1
+                        villages_d[s] += 1
                     except KeyError:
                         files_not_in_taiwan += 1
                 except Exception:
@@ -235,13 +235,16 @@ def main() -> None:
         print("Number of files not within Taiwan", files_not_in_taiwan)
         print("Number of invalid files", invalid_files)
 
-        villages = sorted(villages.items(), key=itemgetter(1))
+        villages = sorted(villages_d.items(), key=itemgetter(1))
         print("Number of villages", len(villages))
 
         with args.out_csv.open("x", newline="", encoding="utf-8") as fw:
             writer = csv.writer(fw)
             writer.writerow(["village", "count"])
             writer.writerows(villages)
+
+        print("Written CSV village file to", args.out_csv.resolve())
+
     else:
         lat, lon = args.lat_lon
         info = geoloc.lookup(lat, lon)
